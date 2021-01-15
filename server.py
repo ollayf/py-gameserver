@@ -37,23 +37,16 @@ class BoxesServer(Server):
         self.games = []
         self.users = []
         self.queue = None
-        self.currentIndex=0
 
     def Connected(self, channel, addr):
         print('new connection:', channel)
         if self.queue==None:
-            channel.gameid=self.currentIndex
-            self.queue=Game(channel, self.currentIndex, self)
-            print(channel)
-            channel.game = self.queue
-            print('Pushing user1 to game {}'.format(channel.gameid))
-        else:
-            channel.gameid = self.currentIndex
-            print('Pushing user2 to game {}'.format(channel.gameid))
-            self.queue.add_player(channel)
-            self.queue.start()
-            self.queue = None
-            self.currentIndex+=1
+            self.queue=Game(channel, self)
+        
+        self.queue.add_player(channel)
+    
+    def generate_gameid(self):
+        return len(self.games)
     
     def name_open(self, uname):
         usernames = [cl.name for cl in self.users]
@@ -65,34 +58,37 @@ class BoxesServer(Server):
 class Game(object):
     turn = 0
     scores = [0, 0]
+    max_players = 2
+    started = False
 
-    def __init__(self, channel, gameid, server):
-        self.id = gameid
-        self.player0 = channel
+    def __init__(self, channel, server):
+        self.players = [] # channels
         self.server = server
-        self.player1 = None # for the next player to join
+        self.id = self.server.generate_gameid()
         self.boardh = [[None for x in range(6)] for y in range(7)]
         self.boardv = [[None for x in range(7)] for y in range(6)]
         self.boxes = [[None for x in range(6)] for y in range(6)]
 
     def start(self):
-        self.player0.Send({"action": "startgame","player":0, "gameid": self.id})
-        self.player1.Send({"action": "startgame","player":1, "gameid": self.id})
+        for player in self.players:
+            p_index = self.players.index(player)
+            player.Send({"action": "startgame","player":p_index, "gameid": self.id})
+        self.started = True
         self.server.games.append(self)
 
     def end(self, last_turn):
         self.Send({'action': 'end', 'victor': last_turn})
 
     def add_player(self, channel):
-        if self.player0 and self.player1:
-            return False
-        elif self.player0:
-            self.player1 = channel
+        if len(self.players) < self.max_players:
+            self.players.append(channel)
             channel.game = self
-        else:
-            self.player0 = channel
-            channel.game = self
+            channel.gameid = self.id
+            print('Pushing user {} to game {}'.format(channel.name, self.id))
         
+        if len(self.players) >= self.max_players:
+            self.server.queue = None
+            self.start()
 
     def check_turn(self, turn):
         if turn == self.turn:
@@ -107,10 +103,14 @@ class Game(object):
         print('Turned changed to', self.turn)
     
     def Send(self, data):
-        self.player0.Send(data)
-        self.player1.Send(data)
+        for player in self.players:
+            player.Send(data)
 
     def move(self, data):
+        if not self.started:
+            data = {'action': 'placefail'}
+            self.Send(data)
+            return 
         gameid = data['gameid']
         turn = data['turn']
         # verifies that it is his turn

@@ -7,10 +7,9 @@ import time
 
 class BoxesGame(ConnectionListener):
     username = None
-    started = False
     scores = [0, 0]
     player = 0
-    min_click_time = 0.05
+    min_click_time = 0.2
 
     def __init__(self, host, port):
 
@@ -192,9 +191,10 @@ class BoxesGame(ConnectionListener):
             owner = None
         
         # what happens in the game when you click the button
-        if time.time() - self.last_click > self.min_click_time:
-            self.last_click = time.time()
-            if pygame.mouse.get_pressed()[0] and owner is None and not isoutofbounds:
+        
+        if pygame.mouse.get_pressed()[0] and owner is None and not isoutofbounds:
+            if time.time() - self.last_click > self.min_click_time:
+                self.last_click = time.time()
                 print("click")
                 self.Send({"action": "place", "x":xpos, "y":ypos, "is_horizontal": is_horizontal, "gameid": self.gameid, "num": self.num,
                 'turn': self.player})
