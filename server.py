@@ -27,7 +27,7 @@ class ClientChannel(Channel):
         self.Send({'action': 'unameRes', 'uname': uname, 'res': res})
 
  
-class BoxesServer(Server):
+class GameServer(Server):
     
     channelClass = ClientChannel
     
@@ -41,7 +41,7 @@ class BoxesServer(Server):
     def Connected(self, channel, addr):
         print('new connection:', channel)
         if self.queue==None:
-            self.queue=Game(channel, self)
+            self.queue=BoxesGame(channel, self)
         
         self.queue.add_player(channel)
     
@@ -55,7 +55,7 @@ class BoxesServer(Server):
         else:
             return True
 
-class Game(object):
+class BoxesGame(object):
     turn = 0
     scores = [0, 0]
     max_players = 2
@@ -173,7 +173,7 @@ class Game(object):
 
  
 print("STARTING SERVER ON {}:{}".format(HOST, PORT))
-boxesServe=BoxesServer(localaddr=(HOST, PORT))
+server=GameServer(localaddr=(HOST, PORT))
 while True:
-    boxesServe.Pump()
+    server.Pump()
     sleep(0.0001)

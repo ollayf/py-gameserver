@@ -5,7 +5,7 @@ from time import sleep
 from env import HOST, PORT
 import time
 
-class BoxesGame(ConnectionListener):
+class GameClient(ConnectionListener):
     username = None
     scores = [0, 0]
     player = 0
@@ -270,6 +270,6 @@ class BoxesGame(ConnectionListener):
 
 
 if __name__ == '__main__':
-    bg = BoxesGame(HOST, PORT)
+    bg = GameClient(HOST, PORT)
     while True:
         bg.update()
